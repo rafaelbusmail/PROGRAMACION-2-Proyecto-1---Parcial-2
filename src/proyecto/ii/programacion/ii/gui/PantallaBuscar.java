@@ -7,6 +7,7 @@ import proyecto.ii.programacion.ii.model.UsuarioRegistrado;
 import proyecto.ii.programacion.ii.storage.FollowStorage;
 import proyecto.ii.programacion.ii.storage.PublicacionStorage;
 import proyecto.ii.programacion.ii.storage.UsuarioStorage;
+import proyecto.ii.programacion.ii.storage.BuscadorRedSocial;
 import javax.swing.*;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
@@ -24,6 +25,8 @@ public class PantallaBuscar extends JPanel implements AppFrame.Refrescable {
 
     private JTextField campoBusqueda;
     private JPanel panelResultados;
+    // Buscable implementado por BuscadorRedSocial
+    private final BuscadorRedSocial buscador = new BuscadorRedSocial();
 
     public PantallaBuscar() {
         setLayout(new BorderLayout());
@@ -147,27 +150,18 @@ public class PantallaBuscar extends JPanel implements AppFrame.Refrescable {
     }
 
     private void buscarUsuarios(String query) {
-        try {
-            UsuarioStorage st = new UsuarioStorage();
-            ArrayList<UsuarioRegistrado> resultados = st.buscarParcial(query);
-            st.cerrar();
-
-            UsuarioRegistrado sesion = AppFrame.getInstance().getSesion();
-
-            if (resultados.isEmpty()) {
-                panelResultados.add(lblNoResultados("No users found for \"" + query + "\""));
-                return;
+        // delega en BuscadorRedSocial que implementa Buscable
+        ArrayList<UsuarioRegistrado> resultados = buscador.buscarPorUsername(query);
+        UsuarioRegistrado sesion = AppFrame.getInstance().getSesion();
+        if (resultados.isEmpty()) {
+            panelResultados.add(lblNoResultados("No users found for \"" + query + "\""));
+            return;
+        }
+        for (UsuarioRegistrado u : resultados) {
+            if (sesion != null && u.getUsername().equalsIgnoreCase(sesion.getUsername())) {
+                continue;
             }
-
-            for (UsuarioRegistrado u : resultados) {
-                if (sesion != null && u.getUsername()
-                        .equalsIgnoreCase(sesion.getUsername())) {
-                    continue;
-                }
-                panelResultados.add(buildFilaUsuario(u));
-            }
-        } catch (IOException e) {
-            panelResultados.add(lblNoResultados("Error searching. Try again."));
+            panelResultados.add(buildFilaUsuario(u));
         }
     }
 

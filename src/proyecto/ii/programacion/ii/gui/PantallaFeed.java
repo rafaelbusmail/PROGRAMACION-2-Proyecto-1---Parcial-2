@@ -15,6 +15,7 @@ import java.awt.event.*;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import proyecto.ii.programacion.ii.model.ListaSimple;
 import java.util.Collections;
 import java.util.Date;
 
@@ -128,34 +129,35 @@ public class PantallaFeed extends JPanel implements AppFrame.Refrescable {
     }
 
     private ArrayList<PostConAutor> cargarTimeline(UsuarioRegistrado sesion) {
-        ArrayList<PostConAutor> timeline = new ArrayList<>();
-        ArrayList<String> agregados = new ArrayList<>();
+        // ListaSimple para acumular el timeline (uso real de estructura propia)
+        ListaSimple<PostConAutor> timeline = new ListaSimple<>();
+        ListaSimple<String> agregados = new ListaSimple<>();
         try {
             UsuarioStorage us = new UsuarioStorage();
             FollowStorage fs = new FollowStorage();
 
             // mis posts
             agregarPosts(timeline, sesion, sesion);
-            agregados.add(sesion.getUsername());
+            agregados.agregar(sesion.getUsername());
 
             // posts de a quien sigo
             ArrayList<String> following = fs.leerLista(
                     proyecto.ii.programacion.ii.storage.FileManager
                             .getRutaFollowing(sesion.getUsername()));
             for (String uname : following) {
-                if (agregados.contains(uname)) {
+                if (agregados.contiene(uname)) {
                     continue;
                 }
                 UsuarioRegistrado autor = us.buscarPorUsername(uname);
                 if (autor != null && autor.isActivo()) {
                     agregarPosts(timeline, autor, sesion);
-                    agregados.add(uname);
+                    agregados.agregar(uname);
                 }
             }
 
             // seed accounts siempre en feed aunque no les hagas follow
             for (String seed : SEEDS) {
-                if (agregados.contains(seed)) {
+                if (agregados.contiene(seed)) {
                     continue;
                 }
                 if (seed.equalsIgnoreCase(sesion.getUsername())) {
@@ -164,7 +166,7 @@ public class PantallaFeed extends JPanel implements AppFrame.Refrescable {
                 UsuarioRegistrado seedUser = us.buscarPorUsername(seed);
                 if (seedUser != null && seedUser.isActivo()) {
                     agregarPosts(timeline, seedUser, sesion);
-                    agregados.add(seed);
+                    agregados.agregar(seed);
                 }
             }
             us.cerrar();
@@ -174,9 +176,10 @@ public class PantallaFeed extends JPanel implements AppFrame.Refrescable {
             e.printStackTrace();
         }
 
-        // ahora parsea a Date para comparar correctamente
+        // convertir a ArrayList para el sort (ListaSimple no soporta Comparator directo)
+        ArrayList<PostConAutor> timelineList = timeline.toArrayList();
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("dd/MM/yyyy HH:mm");
-        Collections.sort(timeline, (a, b) -> {
+        Collections.sort(timelineList, (a, b) -> {
             try {
                 Date da = sdf.parse(a.post.getFecha() + " " + a.post.getHora());
                 Date db = sdf.parse(b.post.getFecha() + " " + b.post.getHora());
@@ -188,16 +191,16 @@ public class PantallaFeed extends JPanel implements AppFrame.Refrescable {
                 return fb.compareTo(fa);
             }
         });
-        return timeline;
+        return timelineList;
     }
 
-    private void agregarPosts(ArrayList<PostConAutor> lista,
+    private void agregarPosts(ListaSimple<PostConAutor> lista,
             UsuarioRegistrado autor,
             UsuarioRegistrado sesion) {
         try {
             PublicacionStorage ps = new PublicacionStorage(autor.getUsername());
             for (Publicacion p : ps.leerTodas()) {
-                lista.add(new PostConAutor(p, autor));
+                lista.agregar(new PostConAutor(p, autor));
             }
             ps.cerrar();
         } catch (IOException e) {

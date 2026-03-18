@@ -260,9 +260,27 @@ public class PantallaPublicar extends JPanel implements AppFrame.Refrescable {
         String id = uPart + "_" + tsCorto;
         String tipo = rutaImagenSeleccionada.isEmpty() ? "TEXT" : "IMAGE";
 
+        // copiar imagen a imagenes/ para que sea portable entre maquinas
+        String rutaFinal = rutaImagenSeleccionada;
+        if (!rutaImagenSeleccionada.isEmpty()) {
+            try {
+                java.io.File origen = new java.io.File(rutaImagenSeleccionada);
+                String carpeta = proyecto.ii.programacion.ii.storage.FileManager
+                        .getRutaImagenes(sesion.getUsername());
+                new java.io.File(carpeta).mkdirs();
+                java.io.File destino = new java.io.File(
+                        carpeta + java.io.File.separator + origen.getName());
+                java.nio.file.Files.copy(origen.toPath(), destino.toPath(),
+                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                rutaFinal = destino.getAbsolutePath();
+            } catch (Exception copyEx) {
+                System.err.println("could not copy to imagenes/: " + copyEx.getMessage());
+            }
+        }
+
         Publicacion nueva = new Publicacion(id, sesion.getUsername(),
                 fecha, hora, contenido, hashtags, menciones,
-                rutaImagenSeleccionada, tipo, 0);
+                rutaFinal, tipo, 0);
 
         try {
             PublicacionStorage ps = new PublicacionStorage(sesion.getUsername());

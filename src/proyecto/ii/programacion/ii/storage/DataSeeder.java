@@ -104,11 +104,45 @@ public class DataSeeder {
         fs.seguir("primos_unitedfc", "fcbarcelona");
     }
 
+    // copia los stickers del classpath a INSTA_RAIZ/stickers_globales/ la primera vez
+    private static void sembrarStickersGlobales() {
+        String carpeta = FileManager.STICKERS_GLOBALES;
+        new java.io.File(carpeta).mkdirs();
+        ClassLoader cl = DataSeeder.class.getClassLoader();
+        for (String ruta : STICKER_RUTAS) {
+            String nombre = ruta.substring(ruta.lastIndexOf('/') + 1);
+            java.io.File dest = new java.io.File(carpeta + java.io.File.separator + nombre);
+            if (dest.exists()) {
+                continue;
+            }
+            try (java.io.InputStream is = cl.getResourceAsStream(ruta);
+                    java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
+                if (is == null) {
+                    continue;
+                }
+                byte[] buf = new byte[4096];
+                int n;
+                while ((n = is.read(buf)) != -1) {
+                    fos.write(buf, 0, n);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     private static void sembrarStickers(String username) throws IOException {
+        sembrarStickersGlobales();
         StickerStorage ss = new StickerStorage(username);
         if (ss.leerTodos().isEmpty()) {
+            String carpeta = FileManager.STICKERS_GLOBALES;
             for (int i = 0; i < STICKER_NOMBRES.length; i++) {
-                ss.agregar(new Sticker(STICKER_NOMBRES[i], STICKER_RUTAS[i]));
+                String nombre = STICKER_RUTAS[i].substring(
+                        STICKER_RUTAS[i].lastIndexOf('/') + 1);
+                java.io.File f = new java.io.File(
+                        carpeta + java.io.File.separator + nombre);
+                // ruta absoluta si se copio exitosamente, classpath como fallback
+                String rutaFinal = f.exists() ? f.getAbsolutePath() : STICKER_RUTAS[i];
+                ss.agregar(new Sticker(STICKER_NOMBRES[i], rutaFinal));
             }
         }
         ss.cerrar();
