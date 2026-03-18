@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+        <group>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/PantallaBuscar.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/model/Publicacion.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/PublicacionStorage.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/ChatClient.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/componentes/FotoCircular.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/DataSeeder.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/componentes/NavBar.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/enums/ModoVista.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/model/UsuarioRegistrado.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/MensajeStorage.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/enums/Genero.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/AppFrame.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/interfaces/Buscable.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/model/Usuario.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/PantallaPublicar.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/PantallaLogin.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/enums/EstadoMensaje.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/PantallaPerfil.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/ChatServer.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/PantallaInbox.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/UsuarioStorage.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/ComentarioStorage.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/componentes/TarjetaMensaje.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/PantallaRegistro.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/enums/EstadoCuenta.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/componentes/TarjetaPost.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/PantallaFeed.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/FollowStorage.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/StickerStorage.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/Main.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/componentes/Assets.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/storage/FileManager.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/PantallaPerfilAjeno.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/gui/PantallaChat.java</file>
+            <file>file:/C:/Users/rafae/OneDrive/Documentos/NetBeansProjects/PROYECTO%20II%20-%20PROGRAMACION%20II/src/proyecto/ii/programacion/ii/model/Comentario.java</file>
+        </group>
+    </open-files>
+</project-private>
