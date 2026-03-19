@@ -12,6 +12,7 @@ import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.*;
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -28,6 +29,7 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
     private JTextField campoNombre;
     private JTextField campoUsername;
     private JPasswordField campoPassword;
+    private JPasswordField campoPasswordConfirm;
     private JTextField campoEdad;
     private JComboBox<String> comboGenero;
     private JComboBox<String> comboTipo;
@@ -53,6 +55,7 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
         campoNombre = crearCampo("Full name");
         campoUsername = crearCampo("Username");
         campoPassword = crearPasswordField();  // se crea aquí, antes de usarse
+        campoPasswordConfirm = crearPasswordField();  // confirmacion de contraseña
         campoEdad = crearCampo("Age");
         comboGenero = crearCombo(new String[]{"Male", "Female"});
         comboTipo = crearCombo(new String[]{"Public", "Private"});
@@ -150,6 +153,8 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
         form.add(Box.createVerticalStrut(6));
         form.add(panelPass);       //campo password visible aquí
         form.add(Box.createVerticalStrut(6));
+        form.add(buildPanelPasswordConfirm());  // confirmacion de contraseña
+        form.add(Box.createVerticalStrut(6));
         form.add(campoEdad);
         form.add(Box.createVerticalStrut(4));
         form.add(lblGenero);
@@ -186,6 +191,7 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
         campoNombre.getDocument().addDocumentListener(dl);
         campoUsername.getDocument().addDocumentListener(dl);
         campoPassword.getDocument().addDocumentListener(dl);
+        campoPasswordConfirm.getDocument().addDocumentListener(dl);
         campoEdad.getDocument().addDocumentListener(dl);
 
         //panel inferior
@@ -270,10 +276,63 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
         return wrapper;
     }
 
+    // panel de confirmacion de contraseña con mismo estilo que buildPanelPassword
+    private JPanel buildPanelPasswordConfirm() {
+        JPanel wrapper = new JPanel(new BorderLayout());
+        wrapper.setBackground(FONDO_CAMPO);
+        wrapper.setMaximumSize(new Dimension(310, 40));
+        wrapper.setPreferredSize(new Dimension(310, 40));
+        wrapper.setBorder(BorderFactory.createLineBorder(BORDE, 1));
+        wrapper.setAlignmentX(Component.CENTER_ALIGNMENT);
+
+        campoPasswordConfirm.setBorder(
+                BorderFactory.createEmptyBorder(8, 10, 8, 4));
+        campoPasswordConfirm.setBackground(FONDO_CAMPO);
+        campoPasswordConfirm.setOpaque(true);
+
+        // placeholder visual
+        campoPasswordConfirm.putClientProperty("placeholder", "Confirm password");
+
+        JLabel btnOjo2 = new JLabel("Show");
+        btnOjo2.setFont(new Font("Arial", Font.BOLD, 11));
+        btnOjo2.setForeground(new Color(0x262626));
+        btnOjo2.setHorizontalAlignment(SwingConstants.CENTER);
+        btnOjo2.setPreferredSize(new Dimension(44, 40));
+        btnOjo2.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        final boolean[] visible2 = {false};
+        btnOjo2.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+                visible2[0] = !visible2[0];
+                campoPasswordConfirm.setEchoChar(visible2[0] ? (char) 0 : '\u25CF');
+                btnOjo2.setText(visible2[0] ? "Hide" : "Show");
+            }
+        });
+
+        wrapper.add(campoPasswordConfirm, BorderLayout.CENTER);
+        wrapper.add(btnOjo2, BorderLayout.EAST);
+
+        campoPasswordConfirm.addFocusListener(new FocusAdapter() {
+            @Override
+            public void focusGained(FocusEvent e) {
+                wrapper.setBorder(BorderFactory.createLineBorder(
+                        new Color(0xA8A8A8), 1));
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                wrapper.setBorder(BorderFactory.createLineBorder(BORDE, 1));
+            }
+        });
+
+        return wrapper;
+    }
+
     private void actualizarFeedback() {
         String nombre = campoNombre.getText().trim();
         String username = campoUsername.getText().trim();
         String pass = new String(campoPassword.getPassword());
+        String confirm = new String(campoPasswordConfirm.getPassword());
         String edadStr = campoEdad.getText().trim();
 
         String msg = null;
@@ -288,6 +347,7 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
             } else if (!username.matches("[a-zA-Z0-9._]+")) {
                 msg = "Username: only letters, numbers, . and _ allowed.";
             } else {
+                // chequear username existente en tiempo real con SwingWorker
                 final String uCheck = username.toLowerCase();
                 new javax.swing.SwingWorker<Boolean, Void>() {
                     @Override
@@ -330,8 +390,15 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
             } else if (!pass.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?].*")) {
                 msg = "Password: needs at least one special character (!@#$...).";
             } else {
-                msg = "\u2713 Strong password";
-                color = VERDE;
+                // contraseña fuerte - ahora mostrar estado de confirmacion
+                if (confirm.isEmpty()) {
+                    msg = "Please confirm your password.";
+                } else if (!pass.equals(confirm)) {
+                    msg = "Passwords do not match.";
+                } else {
+                    msg = "Passwords match";
+                    color = VERDE;
+                }
             }
         }
 
@@ -364,6 +431,7 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
                 && pass.matches(".*[a-z].*")
                 && pass.matches(".*[0-9].*")
                 && pass.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\",./<>?].*")
+                && pass.equals(confirm)
                 && !edadStr.isEmpty()
                 && edadStr.matches("[0-9]+");
 
@@ -402,14 +470,31 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
                 return;
             }
             String fecha = new SimpleDateFormat("dd/MM/yyyy").format(new Date());
+
+            // copiar foto de perfil a INSTA_RAIZ/username/imagenes/ si es ruta absoluta
+            String rutaFotoFinal = rutaFoto;
+            FileManager.crearEstructuraUsuario(username);
+            if (!rutaFoto.startsWith("avatars/") && new File(rutaFoto).isAbsolute()) {
+                try {
+                    String ext = rutaFoto.contains(".")
+                            ? rutaFoto.substring(rutaFoto.lastIndexOf(".")) : ".png";
+                    String carpeta = FileManager.getRutaImagenes(username);
+                    FileManager.crearCarpeta(carpeta);
+                    File destino = new File(carpeta + File.separator + "profile" + ext);
+                    java.nio.file.Files.copy(new File(rutaFoto).toPath(), destino.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    rutaFotoFinal = destino.getPath();
+                } catch (Exception ignored) {
+                    rutaFotoFinal = rutaFoto;
+                }
+            }
+
             UsuarioRegistrado u = new UsuarioRegistrado(
                     username, pass, nombre, genero, edad,
-                    fecha, EstadoCuenta.ACTIVO, tipo, rutaFoto);
+                    fecha, EstadoCuenta.ACTIVO, tipo, rutaFotoFinal);
             st.agregar(u);
             st.cerrar();
-            FileManager.crearEstructuraUsuario(username);
             sembrarStickers(username);
-            // las 3 cuentas seed hacen follow automatico al nuevo usuario
             autoFollowDeSeedAccounts(username);
             limpiar();
             AppFrame.getInstance().iniciarSesion(u);
@@ -426,9 +511,12 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
             proyecto.ii.programacion.ii.storage.UsuarioStorage us
                     = new proyecto.ii.programacion.ii.storage.UsuarioStorage();
             for (String seed : seeds) {
-                // verificar que la seed account existe antes de hacer follow
-                if (us.existeUsername(seed)) {
+                if (us.existeUsername(seed)
+                        && !seed.equalsIgnoreCase(nuevoUsername)) {
+                    // seeds siguen al nuevo usuario
                     fs.seguir(seed, nuevoUsername);
+                    // el nuevo usuario sigue a las seeds
+                    fs.seguir(nuevoUsername, seed);
                 }
             }
             us.cerrar();
@@ -456,6 +544,7 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
         fc.setFileFilter(new javax.swing.filechooser.FileNameExtensionFilter(
                 "Images", "jpg", "jpeg", "png"));
         if (fc.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
+            // guardar la ruta absoluta temporalmente - se copiara al registrarse
             rutaFoto = fc.getSelectedFile().getAbsolutePath();
             actualizarFoto();
         }
@@ -484,6 +573,7 @@ public class PantallaRegistro extends JPanel implements AppFrame.Refrescable {
         campoNombre.setText("");
         campoUsername.setText("");
         campoPassword.setText("");
+        campoPasswordConfirm.setText("");
         campoEdad.setText("");
         passVisible = false;
         campoPassword.setEchoChar('●');

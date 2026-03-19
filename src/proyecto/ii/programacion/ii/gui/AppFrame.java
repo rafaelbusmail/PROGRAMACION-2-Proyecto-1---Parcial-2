@@ -84,6 +84,8 @@ public class AppFrame extends JFrame {
                 FileManager.inicializarEstructura();
                 DataSeeder.sembrar();
             }
+            // sembrar stickers globales siempre 
+            DataSeeder.sembrarStickersGlobales();
         } catch (Exception e) {
             JOptionPane.showMessageDialog(this,
                     "Error initializing data: " + e.getMessage());
@@ -196,21 +198,22 @@ public class AppFrame extends JFrame {
         chatClient = new proyecto.ii.programacion.ii.storage.ChatClient(
                 u.getUsername(), () -> {
             navBar.setBadgeInbox(true);
-            // si el chat esta visible, recargar mensajes al instante
-            Component actual = getPantallaActual(PANTALLA_CHAT);
-            if (actual instanceof PantallaChat && actual.isVisible()) {
-                ((PantallaChat) actual).refrescarMensajes();
+            // refrescar PantallaChat si esta visible (nuevo mensaje entrante)
+            Component chatComp = getPantallaPorNombre(PANTALLA_CHAT);
+            if (chatComp instanceof PantallaChat && chatComp.isVisible()) {
+                ((PantallaChat) chatComp).refrescarMensajes();
             }
-            // si inbox esta visible, refrescarlo
-            Component inboxComp = getPantallaActual(PANTALLA_INBOX);
-            if (inboxComp instanceof PantallaInbox && inboxComp.isVisible()) {
+            // refrescar inbox siempre aunque no sea visible, al volver estara actualizado
+            Component inboxComp = getPantallaPorNombre(PANTALLA_INBOX);
+            if (inboxComp instanceof PantallaInbox) {
                 ((Refrescable) inboxComp).refrescar();
             }
         });
-        // cuando el receptor lee nuestros mensajes, refrescar inbox para mostrar "Seen"
+        // cuando el receptor lee los mensajes, actualizar inbox del emisor para mostrar "Seen"
         chatClient.setOnMensajeLeido(() -> {
-            Component inboxComp = getPantallaActual(PANTALLA_INBOX);
-            if (inboxComp instanceof PantallaInbox && inboxComp.isVisible()) {
+            // refrescar inbox siempre, no solo si es visible
+            Component inboxComp = getPantallaPorNombre(PANTALLA_INBOX);
+            if (inboxComp instanceof PantallaInbox) {
                 ((Refrescable) inboxComp).refrescar();
             }
         });
@@ -240,6 +243,10 @@ public class AppFrame extends JFrame {
         return usuarioSesion;
     }
 
+    public void setSesion(UsuarioRegistrado u) {
+        this.usuarioSesion = u;
+    }
+
     // cliente socket para notificaciones en tiempo real
     private proyecto.ii.programacion.ii.storage.ChatClient chatClient;
 
@@ -258,6 +265,8 @@ public class AppFrame extends JFrame {
                     pantallaAnteriorPerfil = PANTALLA_BUSCAR;
                 } else if (c instanceof PantallaPerfil) {
                     pantallaAnteriorPerfil = PANTALLA_PERFIL;
+                } else if (c instanceof PantallaChat) {
+                    pantallaAnteriorPerfil = PANTALLA_CHAT;
                 } else {
                     pantallaAnteriorPerfil = PANTALLA_BUSCAR;
                 }

@@ -12,6 +12,8 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 
 public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
@@ -290,7 +292,7 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
         img.setHorizontalAlignment(SwingConstants.CENTER);
         cell.add(img, BorderLayout.CENTER);
         cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        // mouseReleased para mayor responsividad
+        // mouseReleased para mayor responsividad 
         cell.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseReleased(MouseEvent e) {
@@ -308,6 +310,24 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
         dlg.setUndecorated(true);
         dlg.setSize(370, 560);
         dlg.setLocationRelativeTo(AppFrame.getInstance());
+
+        // opacacion: glasspane semitransparente mientras el post esta visible
+        JPanel glass = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                g.setColor(new Color(0, 0, 0, 160));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        glass.setOpaque(false);
+        AppFrame.getInstance().setGlassPane(glass);
+        glass.setVisible(true);
+        dlg.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                glass.setVisible(false);
+            }
+        });
 
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
@@ -471,6 +491,7 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
                             + "</small></div></html>");
                     lbl.setFont(new Font("Arial", Font.PLAIN, 13));
                     row.add(lbl, BorderLayout.CENTER);
+                    //row clickeable navega al perfil del comentarista
                     final String uComentUser = c.getUsername();
                     row.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                     lbl.setForeground(Color.BLACK);
@@ -809,8 +830,25 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
             return;
         }
 
-        String nuevaRuta = fc.getSelectedFile().getAbsolutePath();
-        u.setRutaFotoPerfil(nuevaRuta);
+        File origen = fc.getSelectedFile();
+        String rutaFinal = origen.getAbsolutePath();
+
+        // copiar la foto al directorio imagenes/ del usuario
+        try {
+            String ext = origen.getName().contains(".")
+                    ? origen.getName().substring(origen.getName().lastIndexOf(".")) : ".png";
+            String carpeta = proyecto.ii.programacion.ii.storage.FileManager
+                    .getRutaImagenes(u.getUsername());
+            proyecto.ii.programacion.ii.storage.FileManager.crearCarpeta(carpeta);
+            File destino = new File(carpeta + File.separator + "profile" + ext);
+            java.nio.file.Files.copy(origen.toPath(), destino.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+            rutaFinal = destino.getPath();
+        } catch (Exception ignored) {
+            // fallback a ruta absoluta si la copia falla
+        }
+
+        u.setRutaFotoPerfil(rutaFinal);
         try {
             UsuarioStorage st = new UsuarioStorage();
             st.actualizar(u);
@@ -822,9 +860,8 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
     }
 
     private void editarPerfil(UsuarioRegistrado u) {
-        // dialogo custom con feedback inline en vez de JOptionPane estatico
         JDialog dlg = new JDialog(AppFrame.getInstance(), "Edit Profile", true);
-        dlg.setSize(420, 320);
+        dlg.setSize(420, 460);
         dlg.setLocationRelativeTo(AppFrame.getInstance());
         dlg.setLayout(new BorderLayout());
 
@@ -836,32 +873,48 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
         gc.fill = GridBagConstraints.HORIZONTAL;
 
         JTextField tfNombre = new JTextField(u.getNombreCompleto(), 20);
+        JTextField tfUsername = new JTextField(u.getUsername(), 20);
         JPasswordField tfPass = new JPasswordField(20);
+        JPasswordField tfConfirm = new JPasswordField(20);
+        final boolean[] passVisible = {false};
 
-        // label de feedback en tiempo real para el password
         JLabel lblFb = new JLabel("<html><div style='width:300px;word-wrap:break-word;'>&nbsp;</div></html>");
         lblFb.setFont(new Font("Arial", Font.PLAIN, 11));
         lblFb.setForeground(new Color(0xED4956));
 
-        // hint debajo del campo password
         JLabel lblHint = new JLabel(
                 "<html><small style='color:#737373'>Leave blank to keep current password</small></html>");
 
-        // feedback en tiempo real mientras escribe el password
-        tfPass.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+        // feedback en tiempo real: valida password Y confirmacion juntas
+        // tambien valida que sea diferente a la contraseña actual
+        javax.swing.event.DocumentListener dlPass = new javax.swing.event.DocumentListener() {
             void actualizar() {
                 String p = new String(tfPass.getPassword()).trim();
-                if (p.isEmpty()) {
+                String c = new String(tfConfirm.getPassword()).trim();
+                if (p.isEmpty() && c.isEmpty()) {
                     lblFb.setText("<html><div style='width:300px;word-wrap:break-word;'>&nbsp;</div></html>");
+                    return;
+                }
+                // validar que sea diferente a la contraseña actual
+                if (!p.isEmpty() && p.equals(u.getPassword())) {
+                    lblFb.setForeground(new Color(0xED4956));
+                    lblFb.setText("<html><div style='width:300px;word-wrap:break-word;'>"
+                            + "New password must be different from current.</div></html>");
                     return;
                 }
                 String err = validarPassword(p);
                 if (err != null) {
                     lblFb.setForeground(new Color(0xED4956));
                     lblFb.setText("<html><div style='width:300px;word-wrap:break-word;'>" + err + "</div></html>");
+                } else if (c.isEmpty()) {
+                    lblFb.setForeground(new Color(0xED4956));
+                    lblFb.setText("<html><div style='width:300px;word-wrap:break-word;'>Please confirm your password.</div></html>");
+                } else if (!p.equals(c)) {
+                    lblFb.setForeground(new Color(0xED4956));
+                    lblFb.setText("<html><div style='width:300px;word-wrap:break-word;'>Passwords do not match.</div></html>");
                 } else {
                     lblFb.setForeground(new Color(0x2ECC71));
-                    lblFb.setText("<html><div style='width:300px;word-wrap:break-word;'>✓ Strong password</div></html>");
+                    lblFb.setText("<html><div style='width:300px;word-wrap:break-word;'>Passwords match</div></html>");
                 }
             }
 
@@ -879,10 +932,94 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
             public void changedUpdate(javax.swing.event.DocumentEvent e) {
                 actualizar();
             }
+        };
+        tfPass.getDocument().addDocumentListener(dlPass);
+        tfConfirm.getDocument().addDocumentListener(dlPass);
+
+        // panel de password con boton Show/Hide integrado
+        JPanel passWrapper = new JPanel(new BorderLayout());
+        passWrapper.add(tfPass, BorderLayout.CENTER);
+        JLabel btnOjoPass = new JLabel("Show");
+        btnOjoPass.setFont(new Font("Arial", Font.BOLD, 11));
+        btnOjoPass.setForeground(new Color(0x262626));
+        btnOjoPass.setPreferredSize(new Dimension(44, 28));
+        btnOjoPass.setHorizontalAlignment(SwingConstants.CENTER);
+        btnOjoPass.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        btnOjoPass.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                passVisible[0] = !passVisible[0];
+                tfPass.setEchoChar(passVisible[0] ? (char) 0 : '\u25CF');
+                tfConfirm.setEchoChar(passVisible[0] ? (char) 0 : '\u25CF');
+                btnOjoPass.setText(passVisible[0] ? "Hide" : "Show");
+            }
+        });
+        passWrapper.add(btnOjoPass, BorderLayout.EAST);
+
+        // validacion de username en tiempo real
+        tfUsername.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            void chequear() {
+                String nu = tfUsername.getText().trim().toLowerCase();
+                if (nu.isEmpty() || nu.equals(u.getUsername().toLowerCase())) {
+                    // sin cambio o vacio - limpiar feedback de username
+                    return;
+                }
+                if (!nu.matches("[a-zA-Z0-9._]+") || nu.length() < 3) {
+                    lblFb.setForeground(new Color(0xED4956));
+                    lblFb.setText("<html><div style='width:300px;'>Username: min 3 chars, only letters/numbers/._</div></html>");
+                    return;
+                }
+                new javax.swing.SwingWorker<Boolean, Void>() {
+                    @Override
+                    protected Boolean doInBackground() throws Exception {
+                        UsuarioStorage st = new UsuarioStorage();
+                        boolean existe = st.existeUsername(nu);
+                        st.cerrar();
+                        return existe;
+                    }
+
+                    @Override
+                    protected void done() {
+                        try {
+                            if (get()) {
+                                lblFb.setForeground(new Color(0xED4956));
+                                lblFb.setText("<html><div style='width:300px;'>Username not available.</div></html>");
+                            } else {
+                                lblFb.setForeground(new Color(0x2ECC71));
+                                lblFb.setText("<html><div style='width:300px;'>Username available!</div></html>");
+                            }
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }.execute();
+            }
+
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                chequear();
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                chequear();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                chequear();
+            }
         });
 
         gc.gridx = 0;
         gc.gridy = 0;
+        gc.weightx = 0;
+        form.add(new JLabel("Username:"), gc);
+        gc.gridx = 1;
+        gc.weightx = 1;
+        form.add(tfUsername, gc);
+
+        gc.gridx = 0;
+        gc.gridy = 1;
         gc.weightx = 0;
         form.add(new JLabel("Full name:"), gc);
         gc.gridx = 1;
@@ -890,21 +1027,28 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
         form.add(tfNombre, gc);
 
         gc.gridx = 0;
-        gc.gridy = 1;
+        gc.gridy = 2;
         gc.weightx = 0;
         form.add(new JLabel("New password:"), gc);
         gc.gridx = 1;
         gc.weightx = 1;
-        form.add(tfPass, gc);
+        form.add(passWrapper, gc);
+
+        gc.gridx = 0;
+        gc.gridy = 3;
+        gc.weightx = 0;
+        form.add(new JLabel("Confirm:"), gc);
+        gc.gridx = 1;
+        gc.weightx = 1;
+        form.add(tfConfirm, gc);
 
         gc.gridx = 1;
-        gc.gridy = 2;
+        gc.gridy = 4;
         form.add(lblHint, gc);
         gc.gridx = 1;
-        gc.gridy = 3;
+        gc.gridy = 5;
         form.add(lblFb, gc);
 
-        // botones
         JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 8));
         btnPanel.setBackground(Color.WHITE);
 
@@ -916,32 +1060,148 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
         btnOk.setForeground(Color.WHITE);
         btnOk.setFocusPainted(false);
         btnOk.addActionListener(e -> {
+            String nuevoUsername = tfUsername.getText().trim().toLowerCase();
             String n = tfNombre.getText().trim();
             String p = new String(tfPass.getPassword()).trim();
+            String c = new String(tfConfirm.getPassword()).trim();
+            String usernameAnterior = u.getUsername();
+
+            // validar username
+            if (nuevoUsername.isEmpty()) {
+                lblFb.setForeground(new Color(0xED4956));
+                lblFb.setText("<html><div style='width:300px;'>Username cannot be empty.</div></html>");
+                return;
+            }
+            if (nuevoUsername.length() < 3 || !nuevoUsername.matches("[a-zA-Z0-9._]+")) {
+                lblFb.setForeground(new Color(0xED4956));
+                lblFb.setText("<html><div style='width:300px;'>Username: min 3 chars, only letters/numbers/._</div></html>");
+                return;
+            }
             if (n.isEmpty()) {
                 lblFb.setForeground(new Color(0xED4956));
-                lblFb.setText("<html><div style='width:280px;'>Full name cannot be empty.</div></html>");
+                lblFb.setText("<html><div style='width:300px;'>Full name cannot be empty.</div></html>");
                 return;
             }
             if (!p.isEmpty()) {
+                if (p.equals(u.getPassword())) {
+                    lblFb.setForeground(new Color(0xED4956));
+                    lblFb.setText("<html><div style='width:300px;'>New password must be different from current.</div></html>");
+                    return;
+                }
                 String err = validarPassword(p);
                 if (err != null) {
                     lblFb.setForeground(new Color(0xED4956));
                     lblFb.setText("<html><div style='width:300px;word-wrap:break-word;'>" + err + "</div></html>");
                     return;
                 }
+                if (!p.equals(c)) {
+                    lblFb.setForeground(new Color(0xED4956));
+                    lblFb.setText("<html><div style='width:300px;'>Passwords do not match.</div></html>");
+                    return;
+                }
                 u.setPassword(p);
             }
+
             u.setNombreCompleto(n);
+            final boolean cambiaUsername = !nuevoUsername.equals(usernameAnterior.toLowerCase());
+
+            // si cambia el username, verificar que no exista antes de guardar
+            if (cambiaUsername) {
+                try {
+                    UsuarioStorage stCheck = new UsuarioStorage();
+                    if (stCheck.existeUsername(nuevoUsername)) {
+                        stCheck.cerrar();
+                        lblFb.setForeground(new Color(0xED4956));
+                        lblFb.setText("<html><div style='width:300px;'>Username not available.</div></html>");
+                        return;
+                    }
+                    stCheck.cerrar();
+                } catch (Exception ex) {
+                    lblFb.setForeground(new Color(0xED4956));
+                    lblFb.setText("<html><div style='width:300px;'>Error checking username.</div></html>");
+                    return;
+                }
+                u.setUsername(nuevoUsername);
+            }
+
             try {
                 UsuarioStorage st = new UsuarioStorage();
-                st.actualizar(u);
+                if (cambiaUsername) {
+                    st.actualizarConUsernameAnterior(usernameAnterior, u);
+                } else {
+                    st.actualizar(u);
+                }
                 st.cerrar();
+
+                // si cambio el username, renombrar carpeta y propagar cambio a todos los archivos
+                if (cambiaUsername) {
+                    boolean renombrado = proyecto.ii.programacion.ii.storage.FileManager
+                            .renombrarCarpetaUsuario(usernameAnterior, nuevoUsername);
+                    if (!renombrado) {
+                        lblFb.setForeground(new Color(0xED4956));
+                        lblFb.setText("<html><div style='width:300px;'>Error renaming user folder.</div></html>");
+                        return;
+                    }
+
+                    // actualizar la ruta de foto de perfil con ambos posibles separadores
+                    // (Windows usa \ pero a veces las rutas tienen /)
+                    String rutaFoto = u.getRutaFotoPerfil();
+                    if (rutaFoto != null) {
+                        String rutaNueva = rutaFoto;
+                        // intentar con / primero, luego con \
+                        String pat1 = "/" + usernameAnterior + "/";
+                        String pat2 = "\\" + usernameAnterior + "\\";
+                        if (rutaNueva.contains(pat1)) {
+                            rutaNueva = rutaNueva.replace(pat1, "/" + nuevoUsername + "/");
+                        } else if (rutaNueva.contains(pat2)) {
+                            rutaNueva = rutaNueva.replace(pat2, "\\" + nuevoUsername + "\\");
+                        }
+                        if (!rutaNueva.equals(rutaFoto)) {
+                            u.setRutaFotoPerfil(rutaNueva);
+                        }
+                    }
+
+                    // propagar el cambio de username a followers, following, inbox, comentarios y posts
+                    try {
+                        UsuarioStorage.propagarCambioUsername(usernameAnterior, nuevoUsername);
+                    } catch (Exception propEx) {
+                        System.err.println("Warning: propagacion parcial: " + propEx.getMessage());
+                    }
+
+                    // guardar la ruta de foto actualizada en users.ins
+                    try {
+                        UsuarioStorage stFoto = new UsuarioStorage();
+                        stFoto.actualizarConUsernameAnterior(nuevoUsername, u);
+                        stFoto.cerrar();
+                    } catch (Exception ignored) {
+                    }
+
+                    // recargar el usuario desde disco para que todo este sincronizado
+                    try {
+                        UsuarioStorage stReload = new UsuarioStorage();
+                        UsuarioRegistrado uActualizado = stReload.buscarPorUsername(nuevoUsername);
+                        stReload.cerrar();
+                        if (uActualizado != null) {
+                            AppFrame.getInstance().setSesion(uActualizado);
+                        } else {
+                            AppFrame.getInstance().setSesion(u);
+                        }
+                    } catch (Exception ignored) {
+                        AppFrame.getInstance().setSesion(u);
+                    }
+
+                    // forzar refrescar el feed para que los posts usen las rutas nuevas
+                    java.awt.Component feedComp = AppFrame.getInstance()
+                            .getPantallaPorNombre(AppFrame.PANTALLA_FEED);
+                    if (feedComp instanceof AppFrame.Refrescable) {
+                        ((AppFrame.Refrescable) feedComp).refrescar();
+                    }
+                }
                 dlg.dispose();
                 refrescar();
             } catch (Exception ex) {
                 lblFb.setForeground(new Color(0xED4956));
-                lblFb.setText("<html><div style='width:280px;'>Error saving changes.</div></html>");
+                lblFb.setText("<html><div style='width:300px;'>Error saving changes.</div></html>");
             }
         });
 
@@ -1083,7 +1343,7 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
                     if (p.mencionaA(u.getUsername()) && ids.add(p.getId())) {
                         lista.add(p);
                     }
-                    // fix: buscar tambien en comentarios del post
+                    //buscar tambien en comentarios del post
                     if (!ids.contains(p.getId())) {
                         try {
                             ComentarioStorage cs = new ComentarioStorage(otro.getUsername());
@@ -1148,6 +1408,7 @@ public class PantallaPerfil extends JPanel implements AppFrame.Refrescable {
                 lbl.setFont(new Font("Arial", Font.PLAIN, 13));
                 row.add(lbl, BorderLayout.CENTER);
 
+                //click lleva al perfil del autor del post
                 row.addMouseListener(new MouseAdapter() {
                     @Override
                     public void mouseReleased(MouseEvent e) {

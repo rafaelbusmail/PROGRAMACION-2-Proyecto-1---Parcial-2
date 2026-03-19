@@ -78,4 +78,13 @@ public class Mensaje {
     public boolean esNoLeido() {
         return estado == EstadoMensaje.NO_LEIDO;
     }
+
+    public void setEmisor(String e) {
+        this.emisor = e;
+    }
+
+    public void setReceptor(String r) {
+        this.receptor = r;
+    }
+
 }

@@ -7,6 +7,7 @@ import proyecto.ii.programacion.ii.model.Publicacion;
 import proyecto.ii.programacion.ii.model.UsuarioRegistrado;
 import proyecto.ii.programacion.ii.storage.ComentarioStorage;
 import proyecto.ii.programacion.ii.storage.FollowStorage;
+import proyecto.ii.programacion.ii.storage.MensajeStorage;
 import proyecto.ii.programacion.ii.storage.PublicacionStorage;
 import proyecto.ii.programacion.ii.storage.UsuarioStorage;
 import proyecto.ii.programacion.ii.storage.FileManager;
@@ -112,7 +113,17 @@ public class PantallaPerfilAjeno extends JPanel implements AppFrame.Refrescable 
         JPanel header = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 14));
         header.setBackground(Color.WHITE);
         header.setMaximumSize(new Dimension(390, 110));
-        header.add(new FotoCircular(u.getRutaFotoPerfil(), 86));
+
+        // avatar clickeable para ver foto ampliada (como en Instagram real)
+        FotoCircular avatarHeader = new FotoCircular(u.getRutaFotoPerfil(), 86);
+        avatarHeader.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        avatarHeader.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                mostrarFotoAmpliada(u.getRutaFotoPerfil(), u.getUsername());
+            }
+        });
+        header.add(avatarHeader);
 
         JPanel stats = new JPanel(new GridLayout(1, 3, 0, 0));
         stats.setBackground(Color.WHITE);
@@ -227,7 +238,7 @@ public class PantallaPerfilAjeno extends JPanel implements AppFrame.Refrescable 
         });
 
         btnMessage.addActionListener(e -> {
-            // siguiendo[0] puede ser stale si el otro usuario acepta en otra instancia
+            // re-leer desde disco para evitar estado desactualizado
             try {
                 FollowStorage fsCheck = new FollowStorage();
                 boolean yoSigoAhora = fsCheck.sigueA(sesion.getUsername(), u.getUsername());
@@ -240,9 +251,22 @@ public class PantallaPerfilAjeno extends JPanel implements AppFrame.Refrescable 
                     return;
                 }
 
-                // reglamento sec 11.1: permitido si publico, o si yo sigo al privado
-                // no requiere follow mutuo - basta con que me hayan aceptado el request
+                // reglamento sec 11.1: permitido si:
+                // a) cuenta publica
+                // b) yo sigo al privado (me aceptaron)
+                // c) el otro ya me envio un mensaje primero (conversacion existente)
                 boolean puedeMsg = uActual.isPublico() || yoSigoAhora;
+
+                if (!puedeMsg) {
+                    // verificar si ya existe conversacion iniciada por el otro
+                    try {
+                        MensajeStorage ms = new MensajeStorage(sesion.getUsername());
+                        boolean existeConv = !ms.leerConversacion(u.getUsername()).isEmpty();
+                        ms.cerrar();
+                        puedeMsg = existeConv;
+                    } catch (IOException ignored) {
+                    }
+                }
 
                 if (!puedeMsg) {
                     JOptionPane.showMessageDialog(this,
@@ -364,6 +388,24 @@ public class PantallaPerfilAjeno extends JPanel implements AppFrame.Refrescable 
         dlg.setUndecorated(true);
         dlg.setSize(370, 560);
         dlg.setLocationRelativeTo(AppFrame.getInstance());
+
+        // opacacion: glasspane semitransparente mientras el post esta visible
+        JPanel glass = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                g.setColor(new Color(0, 0, 0, 160));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        glass.setOpaque(false);
+        AppFrame.getInstance().setGlassPane(glass);
+        glass.setVisible(true);
+        dlg.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                glass.setVisible(false);
+            }
+        });
 
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBackground(Color.WHITE);
@@ -662,6 +704,53 @@ public class PantallaPerfilAjeno extends JPanel implements AppFrame.Refrescable 
     }
 
     // escapa html para labels
+    // muestra la foto de perfil ampliada con fondo opaco - cierra al clickear fuera
+    private void mostrarFotoAmpliada(String rutaFoto, String username) {
+        JDialog dlg = new JDialog(AppFrame.getInstance(), false);
+        dlg.setUndecorated(true);
+        dlg.setBackground(new Color(0, 0, 0, 0));
+
+        // foto ampliada circular de 260px
+        FotoCircular fotoGrande = new FotoCircular(rutaFoto, 260);
+
+        JPanel contenedor = new JPanel(new GridBagLayout());
+        contenedor.setBackground(new Color(0, 0, 0, 0));
+        contenedor.setOpaque(false);
+        contenedor.add(fotoGrande);
+        dlg.add(contenedor);
+        dlg.setSize(300, 300);
+        dlg.setLocationRelativeTo(AppFrame.getInstance());
+
+        // glasspane oscuro sobre AppFrame
+        JPanel glass = new JPanel() {
+            @Override
+            protected void paintComponent(Graphics g) {
+                g.setColor(new Color(0, 0, 0, 200));
+                g.fillRect(0, 0, getWidth(), getHeight());
+            }
+        };
+        glass.setOpaque(false);
+        AppFrame.getInstance().setGlassPane(glass);
+        glass.setVisible(true);
+
+        // cerrar al clickear fuera del circulo (en el glasspane o fuera del dialogo)
+        glass.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                glass.setVisible(false);
+                dlg.dispose();
+            }
+        });
+        dlg.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosed(WindowEvent e) {
+                glass.setVisible(false);
+            }
+        });
+
+        dlg.setVisible(true);
+    }
+
     private String esc(String s) {
         if (s == null) {
             return "";

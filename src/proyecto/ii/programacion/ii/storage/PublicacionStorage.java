@@ -57,6 +57,15 @@ public class PublicacionStorage {
         }
     }
 
+    // reescribe todo el archivo con la lista actualizada (usado al propagar username)
+    public void reescribirTodas(ArrayList<Publicacion> lista) throws IOException {
+        raf.seek(0);
+        raf.setLength(0);
+        for (Publicacion p : lista) {
+            escribirRegistro(p);
+        }
+    }
+
     public void actualizarLikes(String postId, int nuevoLikes) throws IOException {
         raf.seek(0);
         while (raf.getFilePointer() < raf.length()) {
@@ -88,7 +97,7 @@ public class PublicacionStorage {
         // reescribir toda la lista con el post modificado
         raf.seek(0);
         raf.setLength(0);
-        for (int i = lista.size() - 1; i >= 0; i--) {
+        for (int i = 0; i < lista.size(); i++) {
             Publicacion p = lista.get(i);
             if (p.getId().equals(postId)) {
                 escribirRegistroConMenciones(p, nuevoLikes, nuevasMenciones);

@@ -27,6 +27,8 @@ public class PantallaFeed extends JPanel implements AppFrame.Refrescable {
     // seed accounts que siempre aparecen en feed aunque no se les siga
     private static final String[] SEEDS = {"rafael", "fcbarcelona", "primos_unitedfc"};
 
+    private final java.util.HashMap<String, ImageIcon> cacheAvatares = new java.util.HashMap<>();
+
     public PantallaFeed() {
         setLayout(new BorderLayout());
         setBackground(Color.WHITE);
@@ -34,6 +36,8 @@ public class PantallaFeed extends JPanel implements AppFrame.Refrescable {
 
     @Override
     public void refrescar() {
+        // limpiar cache para que los cambios de foto de perfil sean visibles
+        cacheAvatares.clear();
         removeAll();
 
         // spinner mientras carga para que la UI no se congele
@@ -410,8 +414,9 @@ public class PantallaFeed extends JPanel implements AppFrame.Refrescable {
         }
 
         // verificar si puede comentar
-        // para cuentas privadas basta con que yo siga al autor (me aceptaron el follow)
-        if (!autor.isPublico()) {
+        // excepcion: el autor siempre puede ver/comentar en sus propios posts
+        boolean soyElAutor = sesion.getUsername().equalsIgnoreCase(autor.getUsername());
+        if (!soyElAutor && !autor.isPublico()) {
             try {
                 FollowStorage fs = new FollowStorage();
                 boolean yoSigo = fs.sigueA(sesion.getUsername(), autor.getUsername());
@@ -452,18 +457,19 @@ public class PantallaFeed extends JPanel implements AppFrame.Refrescable {
                 vacio.setAlignmentX(Component.CENTER_ALIGNMENT);
                 lista.add(vacio);
             } else {
-                // cargar usuarios una vez para los avatares
-                java.util.HashMap<String, UsuarioRegistrado> cacheUsuarios
-                        = new java.util.HashMap<>();
+                // usar el cache de nivel clase para los avatares de comentaristas
+                // si no esta en cache, leerlo del disco y guardarlo
                 try {
                     UsuarioStorage usTemp = new UsuarioStorage();
                     for (Comentario c : comentarios) {
-                        if (!cacheUsuarios.containsKey(c.getUsername())) {
+                        if (!cacheAvatares.containsKey(c.getUsername())) {
                             UsuarioRegistrado uComent
                                     = usTemp.buscarPorUsername(c.getUsername());
-                            if (uComent != null) {
-                                cacheUsuarios.put(c.getUsername(), uComent);
-                            }
+                            String ruta = uComent != null
+                                    ? uComent.getRutaFotoPerfil()
+                                    : "avatars/default_avatar.png";
+                            cacheAvatares.put(c.getUsername(),
+                                    Assets.getAvatarCircular(ruta, 32));
                         }
                     }
                     usTemp.cerrar();
@@ -476,11 +482,12 @@ public class PantallaFeed extends JPanel implements AppFrame.Refrescable {
                     row.setBorder(BorderFactory.createEmptyBorder(10, 12, 10, 12));
                     row.setMaximumSize(new Dimension(390, Integer.MAX_VALUE));
 
-                    // avatar del comentarista
-                    UsuarioRegistrado uComent = cacheUsuarios.get(c.getUsername());
-                    String rutaAvatar = uComent != null
-                            ? uComent.getRutaFotoPerfil() : "avatars/default_avatar.png";
-                    FotoCircular avatarComent = new FotoCircular(rutaAvatar, 32);
+                    // avatar del comentarista - usar cache para evitar releer disco
+                    ImageIcon icAvatar = cacheAvatares.get(c.getUsername());
+                    JLabel avatarComent = icAvatar != null
+                            ? new JLabel(icAvatar)
+                            : new JLabel();
+                    avatarComent.setPreferredSize(new Dimension(32, 32));
                     avatarComent.setAlignmentY(Component.TOP_ALIGNMENT);
                     avatarComent.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
                     avatarComent.addMouseListener(new MouseAdapter() {

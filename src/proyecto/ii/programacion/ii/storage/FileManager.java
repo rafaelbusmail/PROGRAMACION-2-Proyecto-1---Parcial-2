@@ -27,6 +27,8 @@ public class FileManager {
         crearCarpeta(RAIZ);
         crearCarpeta(STICKERS_GLOBALES);
         crearArchivo(USERS_FILE);
+        // stickers_globales.ins: biblioteca compartida de stickers para todos los usuarios
+        crearArchivo(STICKERS_GLOBALES + "/stickers_globales.ins");
     }
 
     // crear carpeta de usuario con todos sus archivos y subcarpetas
@@ -103,5 +105,25 @@ public class FileManager {
 
     public static String getRutaStickersPersonales(String username) {
         return RAIZ + "/" + username + "/stickers_personales";
+    }
+
+    // stickers compartidos disponibles para todos los usuarios
+    public static String getRutaStickersGlobalesIns() {
+        return STICKERS_GLOBALES + "/stickers_globales.ins";
+    }
+
+    // renombra la carpeta del usuario cuando se cambia el username
+    // retorna true si el renombrado fue exitoso o no era necesario
+    public static boolean renombrarCarpetaUsuario(String usernameAnterior,
+            String usernameNuevo) {
+        File carpetaVieja = new File(RAIZ + "/" + usernameAnterior);
+        File carpetaNueva = new File(RAIZ + "/" + usernameNuevo);
+        if (!carpetaVieja.exists()) {
+            return true;  // nada que renombrar
+        }
+        if (carpetaNueva.exists()) {
+            return false;   // destino ya ocupado
+        }
+        return carpetaVieja.renameTo(carpetaNueva);
     }
 }

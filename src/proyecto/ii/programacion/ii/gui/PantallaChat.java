@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import proyecto.ii.programacion.ii.storage.FileManager;
 
 public class PantallaChat extends JPanel implements AppFrame.Refrescable {
 
@@ -112,11 +113,23 @@ public class PantallaChat extends JPanel implements AppFrame.Refrescable {
 
         JPanel userInfo = new JPanel(new BorderLayout(8, 0));
         userInfo.setBackground(Color.WHITE);
+        userInfo.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         FotoCircular foto = new FotoCircular(otroUsuario.getRutaFotoPerfil(), 36);
         JLabel lblUser = new JLabel("@" + otroUsuario.getUsername());
         lblUser.setFont(new Font("Arial", Font.BOLD, 14));
         userInfo.add(foto, BorderLayout.WEST);
         userInfo.add(lblUser, BorderLayout.CENTER);
+
+        // al volver del perfil, la flecha de back del perfil ajeno regresa al inbox
+        userInfo.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                if (autoRefresh != null) {
+                    autoRefresh.stop();
+                }
+                AppFrame.getInstance().verPerfilAjeno(otroUsuario.getUsername());
+            }
+        });
 
         JLabel btnMenu = new JLabel();
         ImageIcon iconMenu = Assets.getIcon("ic_back.png", 20);
@@ -214,6 +227,48 @@ public class PantallaChat extends JPanel implements AppFrame.Refrescable {
                 BorderFactory.createEmptyBorder(8, 12, 8, 12)));
         campoTexto.addActionListener(e -> enviarTexto());
 
+        // contador de caracteres: visible solo desde 250 chars (limite = 300)
+        JLabel lblCharCount = new JLabel("");
+        lblCharCount.setFont(new Font("Arial", Font.PLAIN, 10));
+        lblCharCount.setForeground(new Color(0x737373));
+        lblCharCount.setVisible(false);
+
+        campoTexto.getDocument().addDocumentListener(new javax.swing.event.DocumentListener() {
+            void update() {
+                int len = campoTexto.getText().length();
+                if (len >= 250) {
+                    int restantes = 300 - len;
+                    lblCharCount.setText(restantes + "");
+                    lblCharCount.setForeground(restantes <= 10
+                            ? new Color(0xED4956) : new Color(0x737373));
+                    lblCharCount.setVisible(true);
+                } else {
+                    lblCharCount.setVisible(false);
+                }
+            }
+
+            @Override
+            public void insertUpdate(javax.swing.event.DocumentEvent e) {
+                update();
+            }
+
+            @Override
+            public void removeUpdate(javax.swing.event.DocumentEvent e) {
+                update();
+            }
+
+            @Override
+            public void changedUpdate(javax.swing.event.DocumentEvent e) {
+                update();
+            }
+        });
+
+        // panel central: campo + contador apilados
+        JPanel centroBar = new JPanel(new BorderLayout(0, 2));
+        centroBar.setBackground(Color.WHITE);
+        centroBar.add(campoTexto, BorderLayout.CENTER);
+        centroBar.add(lblCharCount, BorderLayout.EAST);
+
         btnEnviar = new JLabel();
         ImageIcon sendIc = Assets.getIcon("ic_send_msg.png", 24);
         if (sendIc != null) {
@@ -232,7 +287,7 @@ public class PantallaChat extends JPanel implements AppFrame.Refrescable {
         });
 
         bar.add(btnSticker, BorderLayout.WEST);
-        bar.add(campoTexto, BorderLayout.CENTER);
+        bar.add(centroBar, BorderLayout.CENTER);
         bar.add(btnEnviar, BorderLayout.EAST);
         return bar;
     }
@@ -258,8 +313,20 @@ public class PantallaChat extends JPanel implements AppFrame.Refrescable {
                 FollowStorage fs = new FollowStorage();
                 boolean sigueYo = fs.sigueA(sesion.getUsername(), actualizado.getUsername());
                 if (!sigueYo) {
-                    bloquearChat("You can no longer message this private account.");
-                    return;
+                    // permitir si ya existe una conversacion iniciada por el otro
+                    // (perfil2 privado puede responder a perfil1 privado que le escribio primero)
+                    try {
+                        MensajeStorage ms = new MensajeStorage(sesion.getUsername());
+                        boolean existeConv = !ms.leerConversacion(actualizado.getUsername()).isEmpty();
+                        ms.cerrar();
+                        if (!existeConv) {
+                            bloquearChat("You can no longer message this private account.");
+                            return;
+                        }
+                    } catch (IOException ignored) {
+                        bloquearChat("You can no longer message this private account.");
+                        return;
+                    }
                 }
             }
 
@@ -305,47 +372,58 @@ public class PantallaChat extends JPanel implements AppFrame.Refrescable {
         }
 
         JScrollBar bar = scrollMensajes.getVerticalScrollBar();
-        boolean estaAlFinal = bar.getValue() >= bar.getMaximum() - bar.getVisibleAmount() - 50;
+        final boolean estaAlFinal
+                = bar.getValue() >= bar.getMaximum() - bar.getVisibleAmount() - 50;
 
-        mensajesPanel.removeAll();
-        try {
-            MensajeStorage ms = new MensajeStorage(sesion.getUsername());
-            ArrayList<Mensaje> mensajes = ms.leerConversacion(otroUsuario.getUsername());
-            ms.marcarLeidos(otroUsuario.getUsername());
-            ms.cerrar();
-
-            // notificar al emisor que sus mensajes fueron leidos para que vea "Seen"
-            proyecto.ii.programacion.ii.storage.ChatClient client
-                    = AppFrame.getInstance().getChatClient();
-            if (client != null) {
-                client.notificarLeido(otroUsuario.getUsername());
+        new javax.swing.SwingWorker<java.util.ArrayList<Mensaje>, Void>() {
+            @Override
+            protected java.util.ArrayList<Mensaje> doInBackground() throws Exception {
+                MensajeStorage ms = new MensajeStorage(sesion.getUsername());
+                java.util.ArrayList<Mensaje> mensajes
+                        = ms.leerConversacion(otroUsuario.getUsername());
+                ms.marcarLeidos(otroUsuario.getUsername());
+                ms.cerrar();
+                return mensajes;
             }
 
-            if (mensajes.isEmpty()) {
-                JLabel vacio = new JLabel(
-                        "<html><div style='text-align:center;color:#737373;'>"
-                        + "<br><br>No messages yet. Say hi! 👋</div></html>");
-                vacio.setFont(new Font("Arial", Font.PLAIN, 13));
-                vacio.setHorizontalAlignment(SwingConstants.CENTER);
-                vacio.setAlignmentX(Component.CENTER_ALIGNMENT);
-                mensajesPanel.add(vacio);
-            } else {
-                for (Mensaje m : mensajes) {
-                    mensajesPanel.add(new TarjetaMensaje(m, sesion.getUsername()));
+            @Override
+            protected void done() {
+                try {
+                    java.util.ArrayList<Mensaje> mensajes = get();
+
+                    // notificar al emisor que sus mensajes fueron leidos
+                    proyecto.ii.programacion.ii.storage.ChatClient client
+                            = AppFrame.getInstance().getChatClient();
+                    if (client != null) {
+                        client.notificarLeido(otroUsuario.getUsername());
+                    }
+
+                    mensajesPanel.removeAll();
+                    if (mensajes.isEmpty()) {
+                        JLabel vacio = new JLabel(
+                                "<html><div style='text-align:center;color:#737373;'>"
+                                + "<br><br>No messages yet. Say hi! \uD83D\uDC4B</div></html>");
+                        vacio.setFont(new Font("Arial", Font.PLAIN, 13));
+                        vacio.setHorizontalAlignment(SwingConstants.CENTER);
+                        vacio.setAlignmentX(Component.CENTER_ALIGNMENT);
+                        mensajesPanel.add(vacio);
+                    } else {
+                        for (Mensaje m : mensajes) {
+                            mensajesPanel.add(new TarjetaMensaje(m, sesion.getUsername()));
+                        }
+                    }
+                    mensajesPanel.revalidate();
+                    mensajesPanel.repaint();
+                    if (estaAlFinal) {
+                        SwingUtilities.invokeLater(()
+                                -> bar.setValue(bar.getMaximum()));
+                    }
+                } catch (Exception ignored) {
+                    mensajesPanel.add(new JLabel("Error loading messages."));
+                    mensajesPanel.revalidate();
                 }
             }
-        } catch (IOException e) {
-            mensajesPanel.add(new JLabel("Error loading messages."));
-        }
-
-        mensajesPanel.revalidate();
-        mensajesPanel.repaint();
-
-        SwingUtilities.invokeLater(() -> {
-            if (estaAlFinal) {
-                bar.setValue(bar.getMaximum());
-            }
-        });
+        }.execute();
     }
 
     private void enviarTexto() {
@@ -417,9 +495,29 @@ public class PantallaChat extends JPanel implements AppFrame.Refrescable {
             return;
         }
         try {
+            // cargar stickers personales del usuario
             StickerStorage ss = new StickerStorage(sesion.getUsername());
             ArrayList<Sticker> stickers = ss.leerTodos();
             ss.cerrar();
+
+            // agregar stickers globales que no esten ya en la lista personal
+            try {
+                java.io.File archivoGlobal = new java.io.File(
+                        FileManager.getRutaStickersGlobalesIns());
+                StickerStorage sg = new StickerStorage(archivoGlobal);
+                java.util.LinkedHashSet<String> nombresYa = new java.util.LinkedHashSet<>();
+                for (Sticker s : stickers) {
+                    nombresYa.add(s.getNombre().toLowerCase());
+                }
+                for (Sticker s : sg.leerTodos()) {
+                    if (!nombresYa.contains(s.getNombre().toLowerCase())) {
+                        stickers.add(s);
+                    }
+                }
+                sg.cerrar();
+            } catch (IOException ignored) {
+            }
+
             if (stickers.isEmpty()) {
                 JOptionPane.showMessageDialog(this, "No stickers available.");
                 return;
@@ -447,7 +545,10 @@ public class PantallaChat extends JPanel implements AppFrame.Refrescable {
                 });
                 grid.add(lbl);
             }
-            dlg.add(new JScrollPane(grid));
+            JScrollPane scrollStickers = new JScrollPane(grid);
+            scrollStickers.setHorizontalScrollBarPolicy(
+                    JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            dlg.add(scrollStickers);
             dlg.setVisible(true);
         } catch (IOException e) {
             JOptionPane.showMessageDialog(this, "Error loading stickers.");
@@ -458,6 +559,28 @@ public class PantallaChat extends JPanel implements AppFrame.Refrescable {
         UsuarioRegistrado sesion = AppFrame.getInstance().getSesion();
         if (sesion == null) {
             return;
+        }
+
+        // verificar permiso igual que enviarTexto  cuenta privada requiere que yo siga
+        try {
+            UsuarioStorage us = new UsuarioStorage();
+            UsuarioRegistrado actualizado = us.buscarPorUsername(otroUsuario.getUsername());
+            us.cerrar();
+            if (actualizado == null || !actualizado.isActivo()) {
+                JOptionPane.showMessageDialog(this, "This account is no longer available.");
+                return;
+            }
+            if (!actualizado.isPublico()) {
+                FollowStorage fs = new FollowStorage();
+                boolean sigueYo = fs.sigueA(sesion.getUsername(), actualizado.getUsername());
+                if (!sigueYo) {
+                    JOptionPane.showMessageDialog(this,
+                            "You can no longer message this private account.");
+                    bloquearChat("You can no longer message this private account.");
+                    return;
+                }
+            }
+        } catch (IOException ignored) {
         }
 
         String ts8s = String.valueOf(System.currentTimeMillis());

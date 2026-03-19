@@ -58,7 +58,7 @@ public class DataSeeder {
         FileManager.crearEstructuraUsuario("fcbarcelona");
         FileManager.crearEstructuraUsuario("primos_unitedfc");
 
-        // post de boston (rafael) 
+        // post de boston (rafael)
         PublicacionStorage ps1 = new PublicacionStorage("rafael");
         if (ps1.leerTodas().isEmpty()) {
             ps1.agregar(new Publicacion(
@@ -69,7 +69,8 @@ public class DataSeeder {
         }
         ps1.cerrar();
 
-        // post_u3_1 = Barça 5-2 (fcbarcelona)
+        // post Barca 5-2 (fcbarcelona)
+        // el trofeo se escribe como \uD83C\uDFC6 en el .java (Java compile-time escape)
         PublicacionStorage ps2 = new PublicacionStorage("fcbarcelona");
         if (ps2.leerTodas().isEmpty()) {
             ps2.agregar(new Publicacion(
@@ -80,7 +81,7 @@ public class DataSeeder {
         }
         ps2.cerrar();
 
-        // post_u2_1 = Gran Final fútbol (primos_unitedfc)
+        // post Gran Final (primos_unitedfc)
         PublicacionStorage ps3 = new PublicacionStorage("primos_unitedfc");
         if (ps3.leerTodas().isEmpty()) {
             ps3.agregar(new Publicacion(
@@ -95,56 +96,44 @@ public class DataSeeder {
         sembrarStickers("fcbarcelona");
         sembrarStickers("primos_unitedfc");
 
-        // relaciones entre seed accounts
-        fs.seguir("rafael", "fcbarcelona");
-        fs.seguir("rafael", "primos_unitedfc");
-        fs.seguir("fcbarcelona", "rafael");
-        fs.seguir("fcbarcelona", "primos_unitedfc");
-        fs.seguir("primos_unitedfc", "rafael");
-        fs.seguir("primos_unitedfc", "fcbarcelona");
-    }
+        // usar ListaSimple<String[]> para construir los pares de follow entre seeds
+        // y recorrer con Nodo<String[]> directamente para mostrar el uso de ambas estructuras
+        ListaSimple<String[]> relaciones = new ListaSimple<>();
+        relaciones.agregar(new String[]{"rafael", "fcbarcelona"});
+        relaciones.agregar(new String[]{"rafael", "primos_unitedfc"});
+        relaciones.agregar(new String[]{"fcbarcelona", "rafael"});
+        relaciones.agregar(new String[]{"fcbarcelona", "primos_unitedfc"});
+        relaciones.agregar(new String[]{"primos_unitedfc", "rafael"});
+        relaciones.agregar(new String[]{"primos_unitedfc", "fcbarcelona"});
 
-    // copia los stickers del classpath a INSTA_RAIZ/stickers_globales/ la primera vez
-    private static void sembrarStickersGlobales() {
-        String carpeta = FileManager.STICKERS_GLOBALES;
-        new java.io.File(carpeta).mkdirs();
-        ClassLoader cl = DataSeeder.class.getClassLoader();
-        for (String ruta : STICKER_RUTAS) {
-            String nombre = ruta.substring(ruta.lastIndexOf('/') + 1);
-            java.io.File dest = new java.io.File(carpeta + java.io.File.separator + nombre);
-            if (dest.exists()) {
-                continue;
-            }
-            try (java.io.InputStream is = cl.getResourceAsStream(ruta);
-                    java.io.FileOutputStream fos = new java.io.FileOutputStream(dest)) {
-                if (is == null) {
-                    continue;
-                }
-                byte[] buf = new byte[4096];
-                int n;
-                while ((n = is.read(buf)) != -1) {
-                    fos.write(buf, 0, n);
-                }
-            } catch (Exception ignored) {
-            }
+        // recorrer la lista enlazada usando Nodo directamente
+        Nodo<String[]> nodo = relaciones.getCabeza();
+        while (nodo != null) {
+            fs.seguir(nodo.dato[0], nodo.dato[1]);
+            nodo = nodo.siguiente;
         }
     }
 
     private static void sembrarStickers(String username) throws IOException {
-        sembrarStickersGlobales();
         StickerStorage ss = new StickerStorage(username);
         if (ss.leerTodos().isEmpty()) {
-            String carpeta = FileManager.STICKERS_GLOBALES;
             for (int i = 0; i < STICKER_NOMBRES.length; i++) {
-                String nombre = STICKER_RUTAS[i].substring(
-                        STICKER_RUTAS[i].lastIndexOf('/') + 1);
-                java.io.File f = new java.io.File(
-                        carpeta + java.io.File.separator + nombre);
-                // ruta absoluta si se copio exitosamente, classpath como fallback
-                String rutaFinal = f.exists() ? f.getAbsolutePath() : STICKER_RUTAS[i];
-                ss.agregar(new Sticker(STICKER_NOMBRES[i], rutaFinal));
+                ss.agregar(new Sticker(STICKER_NOMBRES[i], STICKER_RUTAS[i]));
             }
         }
         ss.cerrar();
+    }
+
+    // siembra la biblioteca global de stickers compartida por todos los usuarios
+    // se llama una sola vez al inicializar la aplicacion
+    public static void sembrarStickersGlobales() throws IOException {
+        File archivoGlobal = new File(FileManager.getRutaStickersGlobalesIns());
+        StickerStorage sg = new StickerStorage(archivoGlobal);
+        if (sg.leerTodos().isEmpty()) {
+            for (int i = 0; i < STICKER_NOMBRES.length; i++) {
+                sg.agregar(new Sticker(STICKER_NOMBRES[i], STICKER_RUTAS[i]));
+            }
+        }
+        sg.cerrar();
     }
 }

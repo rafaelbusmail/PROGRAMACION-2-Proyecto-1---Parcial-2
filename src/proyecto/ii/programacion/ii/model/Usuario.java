@@ -75,6 +75,10 @@ public abstract class Usuario {
         this.password = p;
     }
 
+    public void setUsername(String u) {
+        this.username = u;
+    }
+
     public void setNombreCompleto(String n) {
         this.nombreCompleto = n;
     }

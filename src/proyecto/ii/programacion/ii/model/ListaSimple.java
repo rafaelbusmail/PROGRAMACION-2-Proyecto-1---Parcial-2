@@ -89,4 +89,10 @@ public class ListaSimple<T> {
         }
         return false;
     }
+
+    // exponer la cabeza para poder recorrer con Nodo directamente
+    public Nodo<T> getCabeza() {
+        return cabeza;
+    }
+
 }

@@ -53,4 +53,9 @@ public class Comentario {
     public String getHora() {
         return hora;
     }
+
+    public void setUsername(String u) {
+        this.username = u;
+    }
+
 }

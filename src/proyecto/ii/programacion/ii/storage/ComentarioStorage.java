@@ -21,12 +21,26 @@ public class ComentarioStorage {
     }
 
     // todos los comentarios de una publicacion especifica
+    // lee todos los comentarios del archivo (sin filtrar por postId)
+    public ArrayList<Comentario> leerTodos() throws IOException {
+        return leerPorPost(null);
+    }
+
+    // reescribir el archivo completo con la lista actualizada
+    public void reescribir(ArrayList<Comentario> lista) throws IOException {
+        raf.seek(0);
+        raf.setLength(0);
+        for (Comentario c : lista) {
+            escribir(c);
+        }
+    }
+
     public ArrayList<Comentario> leerPorPost(String postId) throws IOException {
         ArrayList<Comentario> lista = new ArrayList<>();
         raf.seek(0);
         while (raf.getFilePointer() < raf.length()) {
             Comentario c = leerRegistro();
-            if (c != null && c.getPostId().equals(postId)) {
+            if (c != null && (postId == null || c.getPostId().equals(postId))) {
                 lista.add(c);
             }
         }

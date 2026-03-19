@@ -3,11 +3,14 @@ package proyecto.ii.programacion.ii.gui;
 import proyecto.ii.programacion.ii.gui.componentes.Assets;
 import proyecto.ii.programacion.ii.model.Publicacion;
 import proyecto.ii.programacion.ii.model.UsuarioRegistrado;
+import proyecto.ii.programacion.ii.storage.FileManager;
 import proyecto.ii.programacion.ii.storage.PublicacionStorage;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
@@ -51,6 +54,7 @@ public class PantallaPublicar extends JPanel implements AppFrame.Refrescable {
         btnShare.setFont(new Font("Arial", Font.BOLD, 14));
         btnShare.setForeground(AZUL);
         btnShare.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        // mouseClicked a mouseReleased para consistencia
         btnShare.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseReleased(MouseEvent e) {
@@ -153,7 +157,7 @@ public class PantallaPublicar extends JPanel implements AppFrame.Refrescable {
             void update() {
                 int len = areaContenido.getText().equals("Write a caption...")
                         ? 0 : areaContenido.getText().length();
-                lblCount.setText(Math.min(len, 220) + "/220");
+                lblCount.setText(len + "/220");
                 lblCount.setForeground(len > 220 ? new Color(0xED4956) : GRIS);
             }
 
@@ -241,7 +245,6 @@ public class PantallaPublicar extends JPanel implements AppFrame.Refrescable {
         String hashtags = campoHashtags.getText().trim();
         String menciones = campoMenciones.getText().trim();
 
-        //validar longitud antes de guardar - se truncarian silenciosamente
         if (hashtags.length() > 100) {
             JOptionPane.showMessageDialog(this,
                     "Hashtags cannot exceed 100 characters (" + hashtags.length() + "/100).");
@@ -260,27 +263,30 @@ public class PantallaPublicar extends JPanel implements AppFrame.Refrescable {
         String id = uPart + "_" + tsCorto;
         String tipo = rutaImagenSeleccionada.isEmpty() ? "TEXT" : "IMAGE";
 
-        // copiar imagen a imagenes/ para que sea portable entre maquinas
-        String rutaFinal = rutaImagenSeleccionada;
+        // copiar imagen a INSTA_RAIZ/username/imagenes/ y guardar ruta relativa
+        String rutaParaGuardar = rutaImagenSeleccionada;
         if (!rutaImagenSeleccionada.isEmpty()) {
             try {
-                java.io.File origen = new java.io.File(rutaImagenSeleccionada);
-                String carpeta = proyecto.ii.programacion.ii.storage.FileManager
-                        .getRutaImagenes(sesion.getUsername());
-                new java.io.File(carpeta).mkdirs();
-                java.io.File destino = new java.io.File(
-                        carpeta + java.io.File.separator + origen.getName());
-                java.nio.file.Files.copy(origen.toPath(), destino.toPath(),
-                        java.nio.file.StandardCopyOption.REPLACE_EXISTING);
-                rutaFinal = destino.getAbsolutePath();
-            } catch (Exception copyEx) {
-                System.err.println("could not copy to imagenes/: " + copyEx.getMessage());
+                File origen = new File(rutaImagenSeleccionada);
+                String carpetaImagenes = FileManager.getRutaImagenes(sesion.getUsername());
+                FileManager.crearCarpeta(carpetaImagenes);
+                // nombre del archivo: id del post + extension original
+                String ext = rutaImagenSeleccionada.contains(".")
+                        ? rutaImagenSeleccionada.substring(rutaImagenSeleccionada.lastIndexOf("."))
+                        : ".png";
+                File destino = new File(carpetaImagenes + File.separator + id + ext);
+                Files.copy(origen.toPath(), destino.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                // guardar ruta relativa desde el directorio de trabajo
+                rutaParaGuardar = destino.getPath();
+            } catch (Exception ex) {
+                // si no se puede copiar, usar la ruta original como fallback
+                rutaParaGuardar = rutaImagenSeleccionada;
             }
         }
 
         Publicacion nueva = new Publicacion(id, sesion.getUsername(),
                 fecha, hora, contenido, hashtags, menciones,
-                rutaFinal, tipo, 0);
+                rutaParaGuardar, tipo, 0);
 
         try {
             PublicacionStorage ps = new PublicacionStorage(sesion.getUsername());

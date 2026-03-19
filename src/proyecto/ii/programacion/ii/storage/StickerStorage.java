@@ -9,16 +9,23 @@ import java.util.ArrayList;
  *   rutaImagen: 300 chars * 2 = 600 bytes
  *   TOTAL: 700 bytes
  */
-
 public class StickerStorage {
 
     private RandomAccessFile raf;
     private final String ruta;
 
+    // constructor por username usa la ruta de stickers del usuario
     public StickerStorage(String username) throws IOException {
         this.ruta = FileManager.getRutaStickers(username);
         FileManager.crearArchivo(ruta);
         raf = new RandomAccessFile(new File(ruta), "rw");
+    }
+
+    // constructor por ruta directa para el archivo de stickers globales
+    public StickerStorage(File archivoDirecto) throws IOException {
+        this.ruta = archivoDirecto.getPath();
+        FileManager.crearArchivo(ruta);
+        raf = new RandomAccessFile(archivoDirecto, "rw");
     }
 
     public void agregar(Sticker s) throws IOException {

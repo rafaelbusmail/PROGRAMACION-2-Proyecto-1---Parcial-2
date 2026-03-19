@@ -25,10 +25,20 @@ public class PantallaInbox extends JPanel implements AppFrame.Refrescable {
 
     @Override
     public void refrescar() {
-        removeAll();
-        construir();
-        revalidate();
-        repaint();
+        new javax.swing.SwingWorker<Void, Void>() {
+            @Override
+            protected Void doInBackground() {
+                return null;
+            }
+
+            @Override
+            protected void done() {
+                removeAll();
+                construir();
+                revalidate();
+                repaint();
+            }
+        }.execute();
     }
 
     private void construir() {

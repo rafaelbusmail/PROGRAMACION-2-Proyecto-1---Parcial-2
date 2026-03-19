@@ -198,4 +198,13 @@ public class Publicacion {
     public String toString() {
         return usernameAutor + ": " + contenido;
     }
+
+    public void setUsernameAutor(String u) {
+        this.usernameAutor = u;
+    }
+
+    public void setRutaImagen(String r) {
+        this.rutaImagen = r;
+    }
+
 }
